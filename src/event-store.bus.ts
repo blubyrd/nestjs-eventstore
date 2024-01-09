@@ -229,15 +229,7 @@ export class EventStoreBus implements OnModuleDestroy {
       const resolved = await this.client.subscribeToPersistentSubscription(
         stream,
         subscriptionName,
-      ).then((subscription: PersistentSubscriptionToStream) => {
-        return {
-          ...subscription,
-          isLive: false,
-          isCreated: true,
-          stream: stream,
-          subscription: subscriptionName,
-        } as ExtendedPersistentSubscription;
-      });
+      )
 
       resolved
         .on('data', (ev: ResolvedEvent) => {
@@ -271,7 +263,15 @@ export class EventStoreBus implements OnModuleDestroy {
 
       this.logger.verbose(`Connection to persistent subscription ${subscriptionName} on stream ${stream} established.`);
 
-      return resolved;
+      const customResolved = {
+        ...resolved,
+        isLive: false,
+        isCreated: true,
+        stream: stream,
+        subscription: subscriptionName,
+      } as ExtendedPersistentSubscription;
+
+      return customResolved;
     } catch (e) {
       this.logger.error(`[${stream}][${subscriptionName}] ${e}`);
       throw e;
