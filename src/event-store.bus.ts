@@ -239,24 +239,22 @@ export class EventStoreBus implements OnModuleDestroy {
         } as ExtendedPersistentSubscription;
       });
 
-      for await (const ev of resolved) {
-        if (!ev.event) continue;
-        try {
-          this.onEvent(ev);
-          await resolved.ack(ev);
-        } catch (err: any) {
-          this.logger.error({
-            error: err,
-            msg: `Error handling event`,
-            event: ev,
-            stream,
-            subscriptionName,
-          });
-          await resolved.nack('retry', err, ev);
-        }
-      }
-
       resolved
+        .on('data', (ev: ResolvedEvent) => {
+          try {
+            this.onEvent(ev);
+            resolved.ack(ev || '');
+          } catch (err: any) {
+            this.logger.error({
+              error: err,
+              msg: `Error handling event`,
+              event: ev,
+              stream,
+              subscriptionName,
+            });
+            resolved.nack('retry', err, ev || '');
+          }
+        })
         .on('confirmation', () =>
           this.logger.log(`[${stream}][${subscriptionName}] Persistent subscription confirmation`),
         )
