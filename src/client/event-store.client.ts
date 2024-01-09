@@ -3,13 +3,12 @@ import {
   END,
   EventStoreDBClient,
   jsonEvent,
-  PersistentSubscription,
+  PersistentSubscriptionToStream,
   ReadRevision,
   START,
   StreamSubscription,
 } from '@eventstore/db-client';
 import { GossipClusterOptions, SingleNodeOptions } from '@eventstore/db-client/dist/Client';
-import { PersistentSubscriptionSettings } from '@eventstore/db-client/dist/utils';
 import { Inject, Logger } from '@nestjs/common';
 import { Guid } from 'guid-typescript';
 import { EVENT_STORE_CONNECTION_OPTIONS } from '../event-store.constants';
@@ -21,6 +20,7 @@ import {
   EventStoreGossipClusterOptions,
   EventStoreSingleNodeOptions,
 } from '../interfaces';
+import { PersistentSubscriptionToStreamSettings } from '@eventstore/db-client/dist/persistentSubscription/utils/persistentSubscriptionSettings';
 
 export class EventStoreClient {
   [x: string]: any;
@@ -104,16 +104,16 @@ export class EventStoreClient {
   async createPersistentSubscription(
     streamName: string,
     persistentSubscriptionName: string,
-    settings: PersistentSubscriptionSettings,
+    settings: PersistentSubscriptionToStreamSettings,
   ): Promise<void> {
-    return this.client.createPersistentSubscription(streamName, persistentSubscriptionName, settings);
+    return this.client.createPersistentSubscriptionToStream(streamName, persistentSubscriptionName, settings);
   }
 
   async subscribeToPersistentSubscription(
     streamName: string,
     persistentSubscriptionName: string,
-  ): Promise<PersistentSubscription> {
-    return this.client.connectToPersistentSubscription(streamName, persistentSubscriptionName);
+  ): Promise<PersistentSubscriptionToStream> {
+    return this.client.subscribeToPersistentSubscriptionToStream(streamName, persistentSubscriptionName);
   }
 
   async subscribeToCatchupSubscription(streamName: string, fromRevision?: ReadRevision): Promise<StreamSubscription> {

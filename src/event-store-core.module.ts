@@ -25,6 +25,7 @@ export class EventStoreCoreModule implements OnModuleInit {
   constructor(
     private readonly explorerService: ExplorerService,
     private readonly eventsBus: EventBus,
+    private readonly moduleRef: ModuleRef,
     private readonly commandsBus: CommandBus,
     private readonly queryBus: QueryBus,
   ) {}

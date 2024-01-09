@@ -1,8 +1,6 @@
 import {
   ErrorType,
-  PersistentSubscriptionSettings,
-  persistentSubscriptionSettingsFromDefaults,
-} from '@eventstore/db-client/dist/utils';
+} from '@eventstore/db-client';
 import {
   EventStoreCatchupSubscription as EsCatchUpSubscription,
   EventStorePersistentSubscription as EsPersistentSubscription,
@@ -11,12 +9,13 @@ import {
 } from './types';
 import { EventStoreBusConfig, IEventConstructors } from '.';
 import { Logger, OnModuleDestroy } from '@nestjs/common';
-import { PersistentAction, ResolvedEvent } from '@eventstore/db-client';
+import { PersistentSubscriptionToStream, ResolvedEvent } from '@eventstore/db-client';
 
 import { EventStoreClient } from './client';
 import { EventStoreSubscriptionType } from './event-store.constants';
 import { IEvent } from '@nestjs/cqrs';
 import { Subject } from 'rxjs';
+import { PersistentSubscriptionToStreamSettings, persistentSubscriptionToStreamSettingsFromDefaults } from '@eventstore/db-client/dist/persistentSubscription/utils/persistentSubscriptionSettings';
 
 export class EventStoreBus implements OnModuleDestroy {
   private eventHandlers: IEventConstructors = {};
@@ -73,7 +72,7 @@ export class EventStoreBus implements OnModuleDestroy {
   async createMissingPersistentSubscriptions(
     subscriptions: EsPersistentSubscription[],
   ): Promise<ExtendedPersistentSubscription[]> {
-    const settings: PersistentSubscriptionSettings = persistentSubscriptionSettingsFromDefaults({
+    const settings: PersistentSubscriptionToStreamSettings = persistentSubscriptionToStreamSettingsFromDefaults({
       resolveLinkTos: true,
     });
 
@@ -172,7 +171,7 @@ export class EventStoreBus implements OnModuleDestroy {
       this.client.writeEventToStream(stream || '$svc-catch-all', event.constructor.name, event);
     } catch (e) {
       this.logger.error(e);
-      throw new Error(e);
+      throw e;
     }
   }
 
@@ -195,7 +194,7 @@ export class EventStoreBus implements OnModuleDestroy {
       );
     } catch (e) {
       this.logger.error(e);
-      throw new Error(e);
+      throw e;
     }
   }
 
@@ -217,8 +216,8 @@ export class EventStoreBus implements OnModuleDestroy {
 
       return resolved;
     } catch (e) {
-      this.logger.error(`[${stream}] ${e.message} ${e.stack}`);
-      throw new Error(e);
+      this.logger.error(`[${stream}] ${e} ${e}`);
+      throw e;
     }
   }
 
@@ -227,27 +226,37 @@ export class EventStoreBus implements OnModuleDestroy {
     subscriptionName: string,
   ): Promise<ExtendedPersistentSubscription> {
     try {
-      const resolved = (await this.client.subscribeToPersistentSubscription(
+      const resolved = await this.client.subscribeToPersistentSubscription(
         stream,
         subscriptionName,
-      )) as ExtendedPersistentSubscription;
+      ).then((subscription: PersistentSubscriptionToStream) => {
+        return {
+          ...subscription,
+          isLive: false,
+          isCreated: true,
+          stream: stream,
+          subscription: subscriptionName,
+        } as ExtendedPersistentSubscription;
+      });
+
+      for await (const ev of resolved) {
+        if (!ev.event) continue;
+        try {
+          this.onEvent(ev);
+          await resolved.ack(ev);
+        } catch (err: any) {
+          this.logger.error({
+            error: err,
+            msg: `Error handling event`,
+            event: ev,
+            stream,
+            subscriptionName,
+          });
+          await resolved.nack('retry', err, ev);
+        }
+      }
 
       resolved
-        .on('data', (ev: ResolvedEvent) => {
-          try {
-            this.onEvent(ev);
-            resolved.ack(ev.event?.id || '');
-          } catch (err) {
-            this.logger.error({
-              error: err,
-              msg: `Error handling event`,
-              event: ev,
-              stream,
-              subscriptionName,
-            });
-            resolved.nack('retry', err, ev.event?.id || '');
-          }
-        })
         .on('confirmation', () =>
           this.logger.log(`[${stream}][${subscriptionName}] Persistent subscription confirmation`),
         )
@@ -263,12 +272,11 @@ export class EventStoreBus implements OnModuleDestroy {
         });
 
       this.logger.verbose(`Connection to persistent subscription ${subscriptionName} on stream ${stream} established.`);
-      resolved.isLive = true;
 
       return resolved;
     } catch (e) {
-      this.logger.error(`[${stream}][${subscriptionName}] ${e.message} ${e.stack}`);
-      throw new Error(e);
+      this.logger.error(`[${stream}][${subscriptionName}] ${e}`);
+      throw e;
     }
   }
 

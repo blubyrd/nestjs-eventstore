@@ -1,5 +1,5 @@
 export * from './event-store-options.interface';
-export * from './event-store-feature-options.interface';
+export * from './event-store-projection-options.interface';
 export * from './event-store-async-options.interface';
 export * from './aggregate-event.interface';
 export * from './event-constructors.interface';

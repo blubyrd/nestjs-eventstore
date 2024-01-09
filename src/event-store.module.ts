@@ -8,10 +8,11 @@ import {
 
 import { EVENT_STORE_CONNECTION_OPTIONS } from './event-store.constants';
 import { EventStoreClient } from './client';
+import { CqrsModule } from '@nestjs/cqrs';
 
 @Global()
 @Module({
-  imports: [EventStoreClient],
+  imports: [EventStoreClient, CqrsModule],
   exports: [EventStoreClient],
 })
 export class EventStoreModule {

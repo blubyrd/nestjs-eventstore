@@ -9,15 +9,13 @@ import {
   ObservableBus,
 } from '@nestjs/cqrs';
 import { EVENTS_HANDLER_METADATA, SAGA_METADATA } from '@nestjs/cqrs/dist/decorators/constants';
-import { Injectable, Logger, OnModuleDestroy, Type } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit, Type } from '@nestjs/common';
 import { Observable, Subscription } from 'rxjs';
-
 import { EventStoreBus } from '../event-store.bus';
-import { EventStoreBusConfig } from '..';
+import { AggregateEvent, EventStoreBusConfig } from '..';
 import { EventStoreClient } from '../client';
 import { ModuleRef } from '@nestjs/core';
 import { filter } from 'rxjs/operators';
-import { isFunction } from 'util';
 
 @Injectable()
 export class EventStoreBusProvider extends ObservableBus<IEvent> implements OnModuleDestroy {
@@ -54,8 +52,7 @@ export class EventStoreBusProvider extends ObservableBus<IEvent> implements OnMo
   }
 
   publishAll(events: IEvent[]) {
-    (events || []).forEach((ev) => this._publisher.publish(ev));
-  }
+    (events || []).forEach((ev) => this._publisher.publish(ev, (ev as AggregateEvent).streamName || '$svc-catch-all'));  }
 
   bind(handler: IEventHandler<IEvent>, name: string) {
     const stream$ = name ? this.ofEventName(name) : this.subject$;
@@ -102,7 +99,7 @@ export class EventStoreBusProvider extends ObservableBus<IEvent> implements OnMo
   }
 
   protected registerSaga(saga: ISaga) {
-    if (!isFunction(saga)) {
+    if (!(typeof saga === 'function')) {      
       throw new InvalidSagaException();
     }
 

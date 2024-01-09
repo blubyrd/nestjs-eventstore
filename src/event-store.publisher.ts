@@ -15,6 +15,10 @@ export class EventStorePublisher {
       publish(event: IEvent) {
         eventBus.publish(event, (event as AggregateEvent).streamName);
       }
+
+      publishAll(events: IEvent[]) {
+        eventBus.publishAll(events);
+      }
     };
   }
 
@@ -22,6 +26,9 @@ export class EventStorePublisher {
     const eventBus = this.eventBus;
     object.publish = (event: IEvent) => {
       eventBus.publish(event, (event as AggregateEvent).streamName);
+    };
+    object.publishAll = (events: IEvent[]) => {
+      eventBus.publishAll(events);
     };
     return object;
   }
