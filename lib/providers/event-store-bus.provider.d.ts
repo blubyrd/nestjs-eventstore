@@ -1,0 +1,30 @@
+import { CommandBus, EventHandlerType, IEvent, IEventHandler, ISaga, ObservableBus } from '@nestjs/cqrs';
+import { OnModuleDestroy, Type } from '@nestjs/common';
+import { Observable } from 'rxjs';
+import { EventStoreBus } from '../event-store.bus';
+import { EventStoreBusConfig } from '..';
+import { EventStoreClient } from '../client';
+import { ModuleRef } from '@nestjs/core';
+export declare class EventStoreBusProvider extends ObservableBus<IEvent> implements OnModuleDestroy {
+    private readonly commandBus;
+    private readonly moduleRef;
+    private readonly client;
+    private readonly config;
+    private _publisher;
+    private readonly subscriptions;
+    private readonly logger;
+    constructor(commandBus: CommandBus, moduleRef: ModuleRef, client: EventStoreClient, config: EventStoreBusConfig);
+    get publisher(): EventStoreBus;
+    set publisher(_publisher: EventStoreBus);
+    onModuleDestroy(): void;
+    publish<T extends IEvent>(event: T, stream: string): void;
+    publishAll(events: IEvent[]): void;
+    bind(handler: IEventHandler<IEvent>, name: string): void;
+    registerSagas(types?: Type<any>[]): void;
+    register(handlers?: EventHandlerType[]): void;
+    protected registerHandler(handler: EventHandlerType): void;
+    protected ofEventName(name: string): Observable<IEvent>;
+    private getEventName;
+    protected registerSaga(saga: ISaga): void;
+    private reflectEventsNames;
+}

@@ -1,0 +1,34 @@
+import { EventStoreCatchupSubscription as EsCatchUpSubscription, EventStorePersistentSubscription as EsPersistentSubscription, ExtendedCatchUpSubscription, ExtendedPersistentSubscription } from './types';
+import { EventStoreBusConfig, IEventConstructors } from '.';
+import { OnModuleDestroy } from '@nestjs/common';
+import { ResolvedEvent } from '@eventstore/db-client';
+import { EventStoreClient } from './client';
+import { IEvent } from '@nestjs/cqrs';
+import { Subject } from 'rxjs';
+export declare class EventStoreBus implements OnModuleDestroy {
+    private readonly client;
+    private readonly subject$;
+    private readonly config;
+    private eventHandlers;
+    private logger;
+    private catchupSubscriptions;
+    private catchupSubscriptionCount;
+    private persistentSubscriptions;
+    private persistentSubscriptionsCount;
+    constructor(client: EventStoreClient, subject$: Subject<IEvent>, config: EventStoreBusConfig);
+    subscribeToPersistentSubscriptions(subscriptions: EsPersistentSubscription[]): Promise<void>;
+    createMissingPersistentSubscriptions(subscriptions: EsPersistentSubscription[]): Promise<ExtendedPersistentSubscription[]>;
+    subscribeToCatchUpSubscriptions(subscriptions: EsCatchUpSubscription[]): Promise<void>;
+    get allCatchupSubsriptionsLive(): boolean;
+    get allPersistentSubscriptionsLive(): boolean;
+    get isLive(): boolean;
+    publish(event: IEvent, stream?: string): Promise<void>;
+    publishAll(events: IEvent[], stream?: string): Promise<void>;
+    subscribeToCatchUpSubscription(stream: string): Promise<ExtendedCatchUpSubscription>;
+    subscribeToPersistentSubscription(stream: string, subscriptionName: string): Promise<ExtendedPersistentSubscription>;
+    onEvent(payload: ResolvedEvent): void;
+    onDropped(sub: ExtendedCatchUpSubscription | ExtendedPersistentSubscription): void;
+    reSubscribeToPersistentSubscription(stream: string, subscriptionName: string): void;
+    addEventHandlers(eventHandlers: IEventConstructors): void;
+    onModuleDestroy(): void;
+}
